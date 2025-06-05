@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: qrcode-app
+    env: python
+    buildCommand: |
+      apt-get update && apt-get install -y libzbar0 libzbar-dev
+      pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0

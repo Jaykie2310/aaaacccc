@@ -1,0 +1,379 @@
+{% extends "product_dashboard_layout.html" %}
+
+{% block page_specific_title %}Dashboard - Tổng quan{% endblock %}
+
+{% block product_dashboard_content %}
+<!-- Dashboard Stats Section -->
+<div class="dashboard-stats-section" style="margin-bottom: 2rem;">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        <!-- Stat Card 1: Tổng số sản phẩm -->
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3 class="stat-title">Tổng sản phẩm</h3>
+                <div class="stat-icon-wrapper">
+                    <i class="fas fa-box"></i>
+                </div>
+            </div>
+            <p class="stat-value" id="totalProducts">
+                <i class="fas fa-spinner fa-spin"></i>
+            </p>
+            <p class="stat-meta">
+                <span id="lowStockAlert" class="text-orange-500" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span style="margin-left: 0.25rem;">Có sản phẩm sắp hết</span>
+                </span>
+                <span id="normalStock" class="text-green-500">
+                    <i class="fas fa-check-circle"></i>
+                    <span style="margin-left: 0.25rem;">Tồn kho ổn định</span>
+                </span>
+            </p>
+        </div>
+
+        <!-- Stat Card 2: Tổng tồn kho -->
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3 class="stat-title">Tổng tồn kho</h3>
+                <div class="stat-icon-wrapper">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+            </div>
+            <p class="stat-value" id="totalInventory">
+                <i class="fas fa-spinner fa-spin"></i>
+            </p>
+            <p class="stat-meta">
+                <span id="outOfStockAlert" class="text-red-500" style="display: none;">
+                    <i class="fas fa-times-circle"></i>
+                    <span style="margin-left: 0.25rem;">Có sản phẩm hết hàng</span>
+                </span>
+                <span id="normalInventory" class="text-green-500">
+                    <i class="fas fa-check-circle"></i>
+                    <span style="margin-left: 0.25rem;">Đơn vị hàng hóa</span>
+                </span>
+            </p>
+        </div>
+
+        <!-- Stat Card 3: Giao dịch -->
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3 class="stat-title">Giao dịch</h3>
+                <div class="stat-icon-wrapper">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+            <p class="stat-value" id="totalTransactions">
+                <i class="fas fa-spinner fa-spin"></i>
+            </p>
+            <p class="stat-meta">
+                <span class="text-blue-500">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span style="margin-left: 0.25rem;">Nhập/xuất kho</span>
+                </span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Category Management Section -->
+<div class="category-management-section" style="margin-bottom: 2rem;">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 600; color: var(--primary-brand-color); margin-bottom: 0.5rem;">Quản lý theo danh mục</h2>
+        <p style="color: var(--text-gray-600);">Chọn danh mục sản phẩm để bắt đầu quản lý</p>
+    </div>
+
+    <div class="category-column-grid">
+        <a href="{{ url_for('qr_management_detail', category_slug='thuc-pham') }}" class="category-column-card">
+            <img src="https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Quản lý Hàng Thực phẩm" class="category-card-image">
+            <div class="category-card-overlay">
+                <h3 class="category-card-title">Quản lý Hàng Thực phẩm</h3>
+            </div>
+        </a>
+
+        <a href="{{ url_for('qr_management_detail', category_slug='gia-dung') }}" class="category-column-card">
+            <img src="https://images.pexels.com/photos/6585751/pexels-photo-6585751.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Quản lý Đồ gia dụng" class="category-card-image">
+            <div class="category-card-overlay">
+                <h3 class="category-card-title">Quản lý Đồ gia dụng</h3>
+            </div>
+        </a>
+
+        <a href="{{ url_for('qr_management_detail', category_slug='thoi-trang') }}" class="category-column-card">
+            <img src="https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Quản lý Thời trang" class="category-card-image">
+            <div class="category-card-overlay">
+                <h3 class="category-card-title">Quản lý Thời trang</h3>
+            </div>
+        </a>
+
+        <a href="{{ url_for('qr_management_detail', category_slug='may-tinh-linh-kien') }}" class="category-column-card">
+            <img src="https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Máy tính & Linh kiện" class="category-card-image">
+            <div class="category-card-overlay">
+                <h3 class="category-card-title">Máy tính & Linh kiện</h3>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Recent Activity Section -->
+<div class="recent-activity-section">
+    <div class="activity-list-card">
+        <div class="activity-list-header">
+            <h3 class="activity-list-title">Hoạt động gần đây</h3>
+            <button class="btn-icon" title="Xem thêm">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+        </div>
+        <div class="activity-list">
+            <div class="activity-item">
+                <div class="activity-item-icon">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <div class="activity-item-content">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <p class="activity-item-title">QR mới được tạo</p>
+                            <p class="activity-item-description">Mã QR cho sản phẩm "Smartphone X"</p>
+                        </div>
+                        <span class="activity-item-time">2 phút trước</span>
+                    </div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-item-icon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div class="activity-item-content">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <p class="activity-item-title">Sản phẩm mới thêm vào kho</p>
+                            <p class="activity-item-description">Đã nhập 200 sản phẩm vào kho A</p>
+                        </div>
+                        <span class="activity-item-time">15 phút trước</span>
+                    </div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-item-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="activity-item-content">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <p class="activity-item-title">Báo cáo được tạo</p>
+                            <p class="activity-item-description">Báo cáo tồn kho tháng 12/2024</p>
+                        </div>
+                        <span class="activity-item-time">1 giờ trước</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="welcome-message" style="text-align: center; padding-top: 20px; margin-top: 20px;">
+    <p style="font-size: 1.1em; color: var(--text-muted);">
+        Hoặc <a href="{{ url_for('product_dashboard_overview_detail') }}" style="color: var(--secondary-brand-color); text-decoration: none; font-weight: 500;">xem tổng quan hệ thống chi tiết</a> (chỉ trên Desktop).
+    </p>
+</div>
+
+<style>
+/* Dashboard specific styles */
+.dashboard-stats-section .grid {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .dashboard-stats-section .grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .dashboard-stats-section .grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.text-green-500 {
+    color: #10B981;
+}
+
+.category-management-section h2 {
+    font-family: var(--font-family-sans);
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Enhanced hover effects for category cards */
+.category-column-card {
+    transition: all 0.3s ease;
+}
+
+.category-column-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.category-column-card:hover .category-card-image {
+    transform: scale(1.1);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 991.98px) {
+    .dashboard-stats-section .grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .category-management-section h2 {
+        font-size: 1.25rem;
+    }
+
+    .activity-item-content > div {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .activity-item-time {
+        margin-top: 0.25rem;
+        margin-left: 0 !important;
+    }
+}
+
+.text-orange-500 {
+    color: #f59e0b;
+}
+
+.text-blue-500 {
+    color: #3b82f6;
+}
+
+.text-red-500 {
+    color: #ef4444;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tải thống kê thời gian thực
+    loadDashboardStats();
+    
+    // Cập nhật thống kê mỗi 30 giây
+    setInterval(loadDashboardStats, 30000);
+});
+
+function loadDashboardStats() {
+    fetch('/api/get-dashboard-stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateStatsDisplay(data.stats);
+            } else {
+                console.error('Lỗi khi tải thống kê:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Lỗi kết nối:', error);
+            // Hiển thị thông báo lỗi cho người dùng
+            document.getElementById('totalProducts').innerHTML = '<span class="text-red-500">Lỗi</span>';
+            document.getElementById('totalInventory').innerHTML = '<span class="text-red-500">Lỗi</span>';
+            document.getElementById('totalTransactions').innerHTML = '<span class="text-red-500">Lỗi</span>';
+        });
+}
+
+function updateStatsDisplay(stats) {
+    const overview = stats.overview;
+    
+    // Cập nhật số liệu
+    document.getElementById('totalProducts').textContent = overview.total_products || 0;
+    document.getElementById('totalInventory').textContent = (overview.total_inventory || 0).toLocaleString('vi-VN');
+    document.getElementById('totalTransactions').textContent = overview.total_transactions || 0;
+    
+    // Cập nhật cảnh báo tồn kho thấp
+    const lowStockAlert = document.getElementById('lowStockAlert');
+    const normalStock = document.getElementById('normalStock');
+    
+    if (overview.low_stock_count > 0) {
+        lowStockAlert.style.display = 'inline';
+        normalStock.style.display = 'none';
+        lowStockAlert.querySelector('span').textContent = `${overview.low_stock_count} sản phẩm sắp hết`;
+    } else {
+        lowStockAlert.style.display = 'none';
+        normalStock.style.display = 'inline';
+    }
+    
+    // Cập nhật cảnh báo hết hàng
+    const outOfStockAlert = document.getElementById('outOfStockAlert');
+    const normalInventory = document.getElementById('normalInventory');
+    
+    if (overview.out_of_stock_count > 0) {
+        outOfStockAlert.style.display = 'inline';
+        normalInventory.style.display = 'none';
+        outOfStockAlert.querySelector('span').textContent = `${overview.out_of_stock_count} sản phẩm hết hàng`;
+    } else {
+        outOfStockAlert.style.display = 'none';
+        normalInventory.style.display = 'inline';
+    }
+    
+    // Cập nhật hoạt động gần đây
+    updateRecentActivity(stats.daily_activity);
+}
+
+function updateRecentActivity(dailyActivity) {
+    const activityList = document.querySelector('.activity-list');
+    if (!activityList || !dailyActivity || dailyActivity.length === 0) return;
+    
+    // Xóa hoạt động cũ (giữ lại cấu trúc HTML gốc)
+    const existingItems = activityList.querySelectorAll('.activity-item');
+    if (existingItems.length > 3) {
+        for (let i = 3; i < existingItems.length; i++) {
+            existingItems[i].remove();
+        }
+    }
+    
+    // Thêm hoạt động mới từ dữ liệu thực
+    dailyActivity.slice(0, 2).forEach((activity, index) => {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        
+        const date = new Date(activity.date);
+        const timeAgo = getTimeAgo(date);
+        
+        activityItem.innerHTML = `
+            <div class="activity-item-icon">
+                <i class="fas fa-exchange-alt"></i>
+            </div>
+            <div class="activity-item-content">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <p class="activity-item-title">Hoạt động kho hàng</p>
+                        <p class="activity-item-description">
+                            ${activity.total_exported > 0 ? `Xuất ${activity.total_exported} sản phẩm` : ''}
+                            ${activity.total_imported > 0 ? `Nhập ${activity.total_imported} sản phẩm` : ''}
+                        </p>
+                    </div>
+                    <span class="activity-item-time">${timeAgo}</span>
+                </div>
+            </div>
+        `;
+        
+        activityList.appendChild(activityItem);
+    });
+}
+
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hôm nay';
+    if (diffDays === 1) return 'Hôm qua';
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+}
+</script>
+{% endblock %}

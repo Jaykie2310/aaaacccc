@@ -65,9 +65,6 @@ def decode_with_multiple_methods(image):
     """Thử nhiều phương pháp decode khác nhau"""
     results = []
     
-    # Thử các phương pháp tiền xử lý ảnh khác nhau
-    processed_images = [image]  # Bắt đầu với ảnh gốc
-    
     # Phương pháp 1: OpenCV QRCodeDetector (ưu tiên vì ổn định hơn trên cloud)
     try:
         import cv2
@@ -98,33 +95,55 @@ def decode_with_multiple_methods(image):
             })
             return results
         
-        # Thêm các phiên bản xử lý ảnh khác nhau cho pyzbar
-        processed_images.extend([
-            Image.fromarray(gray),  # Ảnh grayscale
-            Image.fromarray(cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]),  # Threshold
-            Image.fromarray(cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2))  # Adaptive threshold
-        ])
+        # Thử với ảnh đã xử lý
+        # Tăng độ tương phản
+        enhanced = cv2.equalizeHist(gray)
+        data, bbox, straight_qrcode = detector.detectAndDecode(enhanced)
+        if data:
+            results.append({
+                'data': data,
+                'type': 'QRCODE',
+                'method': 'opencv_enhanced'
+            })
+            return results
+        
+        # Thử với threshold
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        data, bbox, straight_qrcode = detector.detectAndDecode(thresh)
+        if data:
+            results.append({
+                'data': data,
+                'type': 'QRCODE',
+                'method': 'opencv_thresh'
+            })
+            return results
+        
+        app.logger.info("OpenCV QRCodeDetector completed but no QR code found")
         
     except Exception as e:
         app.logger.warning(f"OpenCV processing failed: {str(e)}")
     
-    # Phương pháp 2: pyzbar (fallback)
-    for proc_image in processed_images:
-        try:
-            from pyzbar.pyzbar import decode as pyzbar_decode
-            decoded_objects = pyzbar_decode(proc_image)
-            if decoded_objects:
-                for obj in decoded_objects:
-                    results.append({
-                        'data': obj.data.decode('utf-8'),
-                        'type': obj.type,
-                        'method': 'pyzbar'
-                    })
-        except Exception as e:
-            app.logger.warning(f"pyzbar decode failed: {str(e)}")
+    # Phương pháp 2: pyzbar (fallback) - chỉ thử nếu có
+    try:
+        from pyzbar.pyzbar import decode as pyzbar_decode
         
-        if results:  # Nếu đã tìm thấy kết quả, dừng lại
-            break
+        # Thử với ảnh gốc
+        decoded_objects = pyzbar_decode(image)
+        if decoded_objects:
+            for obj in decoded_objects:
+                results.append({
+                    'data': obj.data.decode('utf-8'),
+                    'type': obj.type,
+                    'method': 'pyzbar'
+                })
+                return results
+        
+        app.logger.info("pyzbar completed but no barcode found")
+        
+    except ImportError:
+        app.logger.warning("pyzbar not available - skipping barcode detection")
+    except Exception as e:
+        app.logger.warning(f"pyzbar decode failed: {str(e)}")
     
     return results
 

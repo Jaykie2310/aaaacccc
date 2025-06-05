@@ -1,13 +1,50 @@
-# Hướng dẫn triển khai lên Render
+# Hướng dẫn triển khai lên Render (Docker)
 
 ## Vấn đề đã khắc phục
 - **Vấn đề**: Quét mã QR hoạt động trên local nhưng không hoạt động trên Render
-- **Nguyên nhân**: Dependencies hệ thống thiếu và cấu hình không phù hợp với môi trường cloud
-- **Giải pháp**: Tối ưu hóa code và dependencies cho Render
+- **Nguyên nhân**: Dependencies hệ thống thiếu (libzbar) và cấu hình không phù hợp với môi trường cloud
+- **Giải pháp**: Sử dụng Docker để đảm bảo tất cả dependencies được cài đặt đúng
 
 ## Files đã cập nhật
 
-### 1. requirements.txt
+### 1. Dockerfile
+```dockerfile
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libzbar0 \
+    libzbar-dev \
+    python3-opencv \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+ENV PRODUCTION=true
+ENV PORT=10000
+EXPOSE 10000
+
+CMD gunicorn app:app --bind 0.0.0.0:$PORT
+```
+
+### 2. render.yaml
+```yaml
+services:
+  - type: web
+    name: qrcode-inventory
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PRODUCTION
+        value: true
+```
+
+### 3. requirements.txt
 ```
 Flask==3.1.1
 flask-cors==6.0.0
@@ -21,30 +58,6 @@ opencv-python-headless==4.8.1.78
 numpy==1.24.3
 captcha==0.7.1
 Werkzeug==3.1.3
-```
-
-### 2. render.yaml
-```yaml
-services:
-  - type: web
-    name: qrcode-inventory
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
-    envVars:
-      - key: PRODUCTION
-        value: true
-      - key: PYTHON_VERSION
-        value: 3.11.11
-```
-
-### 3. apt-packages.txt
-```
-libzbar0
-libzbar-dev
-python3-opencv
-libgl1-mesa-glx
-libglib2.0-0
 ```
 
 ## Cải tiến trong app.py

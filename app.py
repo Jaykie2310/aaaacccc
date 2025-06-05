@@ -62,81 +62,149 @@ def preprocess_image_for_barcode(image):
 
 
 def decode_with_multiple_methods(image):
-    """Thử nhiều phương pháp decode khác nhau"""
+    """Thử nhiều phương pháp decode khác nhau với xử lý ảnh nâng cao"""
     results = []
     
-    # Phương pháp 1: OpenCV QRCodeDetector (ưu tiên vì ổn định hơn trên cloud)
+    # Phương pháp 1: OpenCV QRCodeDetector với nhiều kỹ thuật xử lý ảnh
     try:
         import cv2
         import numpy as np
         
-        # Chuyển PIL Image sang OpenCV format
-        opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
+        # Chuyển PIL Image sang OpenCV format một cách an toàn
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
         
-        # Thử OpenCV QRCodeDetector trước
+        # Chuyển PIL Image sang numpy array
+        np_image = np.array(image)
+        
+        # Đảm bảo array có đúng định dạng cho OpenCV
+        if len(np_image.shape) == 2:  # Grayscale
+            opencv_image = np_image
+        else:  # RGB/RGBA
+            opencv_image = cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
+        
+        # Tạo detector
         detector = cv2.QRCodeDetector()
-        data, bbox, straight_qrcode = detector.detectAndDecode(opencv_image)
-        if data:
-            results.append({
-                'data': data,
-                'type': 'QRCODE',
-                'method': 'opencv'
-            })
-            return results
         
-        # Thử với ảnh grayscale
-        data, bbox, straight_qrcode = detector.detectAndDecode(gray)
-        if data:
-            results.append({
-                'data': data,
-                'type': 'QRCODE',
-                'method': 'opencv_gray'
-            })
-            return results
+        # Danh sách các phương pháp xử lý ảnh
+        processing_methods = []
         
-        # Thử với ảnh đã xử lý
-        # Tăng độ tương phản
+        # 1. Ảnh gốc
+        processing_methods.append(('original', opencv_image))
+        
+        # 2. Grayscale
+        gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
+        processing_methods.append(('grayscale', gray))
+        
+        # 3. Resize nếu ảnh quá nhỏ hoặc quá lớn
+        height, width = gray.shape
+        if width < 300 or height < 300:
+            scale = max(300/width, 300/height)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            resized = cv2.resize(gray, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+            processing_methods.append(('resized_up', resized))
+        elif width > 1000 or height > 1000:
+            scale = min(1000/width, 1000/height)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            resized = cv2.resize(gray, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            processing_methods.append(('resized_down', resized))
+        
+        # 4. Tăng độ tương phản
         enhanced = cv2.equalizeHist(gray)
-        data, bbox, straight_qrcode = detector.detectAndDecode(enhanced)
-        if data:
-            results.append({
-                'data': data,
-                'type': 'QRCODE',
-                'method': 'opencv_enhanced'
-            })
-            return results
+        processing_methods.append(('enhanced', enhanced))
         
-        # Thử với threshold
-        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        data, bbox, straight_qrcode = detector.detectAndDecode(thresh)
-        if data:
-            results.append({
-                'data': data,
-                'type': 'QRCODE',
-                'method': 'opencv_thresh'
-            })
-            return results
+        # 5. CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        clahe_enhanced = clahe.apply(gray)
+        processing_methods.append(('clahe', clahe_enhanced))
         
-        app.logger.info("OpenCV QRCodeDetector completed but no QR code found")
+        # 6. Gaussian blur để giảm noise
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        processing_methods.append(('blurred', blurred))
+        
+        # 7. Threshold methods
+        _, thresh_binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        processing_methods.append(('thresh_binary', thresh_binary))
+        
+        _, thresh_binary_inv = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        processing_methods.append(('thresh_binary_inv', thresh_binary_inv))
+        
+        # 8. Adaptive threshold
+        adaptive_mean = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+        processing_methods.append(('adaptive_mean', adaptive_mean))
+        
+        adaptive_gaussian = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        processing_methods.append(('adaptive_gaussian', adaptive_gaussian))
+        
+        # 9. Morphological operations
+        kernel = np.ones((3,3), np.uint8)
+        opening = cv2.morphologyEx(thresh_binary, cv2.MORPH_OPEN, kernel)
+        processing_methods.append(('morphology_open', opening))
+        
+        closing = cv2.morphologyEx(thresh_binary, cv2.MORPH_CLOSE, kernel)
+        processing_methods.append(('morphology_close', closing))
+        
+        # Thử decode với từng phương pháp
+        for method_name, processed_image in processing_methods:
+            try:
+                data, bbox, straight_qrcode = detector.detectAndDecode(processed_image)
+                if data and data.strip():
+                    app.logger.info(f"QR code detected using method: {method_name}")
+                    results.append({
+                        'data': data.strip(),
+                        'type': 'QRCODE',
+                        'method': f'opencv_{method_name}'
+                    })
+                    return results
+            except Exception as method_error:
+                app.logger.debug(f"Method {method_name} failed: {str(method_error)}")
+                continue
+        
+        app.logger.info("OpenCV QRCodeDetector tried all methods but no QR code found")
         
     except Exception as e:
-        app.logger.warning(f"OpenCV processing failed: {str(e)}")
+        app.logger.error(f"OpenCV processing failed: {str(e)}")
     
-    # Phương pháp 2: pyzbar (fallback) - chỉ thử nếu có
+    # Phương pháp 2: pyzbar (fallback) với xử lý ảnh tương tự
     try:
         from pyzbar.pyzbar import decode as pyzbar_decode
         
+        # Chuyển về PIL format cho pyzbar
+        if image.mode != 'RGB':
+            pil_image = image.convert('RGB')
+        else:
+            pil_image = image
+        
         # Thử với ảnh gốc
-        decoded_objects = pyzbar_decode(image)
+        decoded_objects = pyzbar_decode(pil_image)
         if decoded_objects:
             for obj in decoded_objects:
-                results.append({
-                    'data': obj.data.decode('utf-8'),
-                    'type': obj.type,
-                    'method': 'pyzbar'
-                })
-                return results
+                data = obj.data.decode('utf-8').strip()
+                if data:
+                    app.logger.info(f"Barcode detected using pyzbar: {data}")
+                    results.append({
+                        'data': data,
+                        'type': str(obj.type),
+                        'method': 'pyzbar'
+                    })
+                    return results
+        
+        # Thử với ảnh grayscale
+        gray_pil = pil_image.convert('L')
+        decoded_objects = pyzbar_decode(gray_pil)
+        if decoded_objects:
+            for obj in decoded_objects:
+                data = obj.data.decode('utf-8').strip()
+                if data:
+                    app.logger.info(f"Barcode detected using pyzbar (grayscale): {data}")
+                    results.append({
+                        'data': data,
+                        'type': str(obj.type),
+                        'method': 'pyzbar_gray'
+                    })
+                    return results
         
         app.logger.info("pyzbar completed but no barcode found")
         
@@ -557,28 +625,47 @@ def scan_product_openfoodfacts():
         try:
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute("""
-                INSERT INTO products (
-                    name, barcode_data, product_id_internal, manufacturer, origin,
-                    volume_weight, date_added, product_qr_code_path
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(barcode_data) DO UPDATE SET
-                name=excluded.name,
-                manufacturer=excluded.manufacturer,
-                origin=excluded.origin,
-                volume_weight=excluded.volume_weight,
-                date_added=excluded.date_added
-            """, (
-                product_info['name'],
-                barcode,
-                generate_internal_product_id(),
-                product_info['manufacturer'],
-                product_info['origin'],
-                product_info['volume'],
-                product_info['scan_date'],
-                None
-            ))
-            product_id = c.lastrowid
+            # Kiểm tra xem sản phẩm đã tồn tại chưa
+            c.execute("SELECT id FROM products WHERE barcode_data = ?", (barcode,))
+            existing_product = c.fetchone()
+
+            if existing_product:
+                # Cập nhật sản phẩm đã tồn tại
+                c.execute("""
+                    UPDATE products SET
+                        name = ?,
+                        manufacturer = ?,
+                        origin = ?,
+                        volume_weight = ?,
+                        date_added = ?
+                    WHERE barcode_data = ?
+                """, (
+                    product_info['name'],
+                    product_info['manufacturer'],
+                    product_info['origin'],
+                    product_info['volume'],
+                    product_info['scan_date'],
+                    barcode
+                ))
+                product_id = existing_product['id']
+            else:
+                # Thêm sản phẩm mới
+                c.execute("""
+                    INSERT INTO products (
+                        name, barcode_data, product_id_internal, manufacturer, origin,
+                        volume_weight, date_added, product_qr_code_path
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    product_info['name'],
+                    barcode,
+                    generate_internal_product_id(),
+                    product_info['manufacturer'],
+                    product_info['origin'],
+                    product_info['volume'],
+                    product_info['scan_date'],
+                    None
+                ))
+                product_id = c.lastrowid
             qr_data = {
                 'product_id': product_id,
                 'name': product_info['name'],
@@ -709,10 +796,20 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     # Cải thiện header cho camera và microphone
-    response.headers['Permissions-Policy'] = 'camera=*, microphone=*, geolocation=()'
+    # Cấu hình quyền camera và microphone
+    response.headers['Permissions-Policy'] = 'camera=*, microphone=*'
     response.headers['Feature-Policy'] = 'camera *; microphone *'
-    # Thêm header HTTPS cho camera trên mobile
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; media-src 'self' blob: data:;"
+    # CSP cho phép camera và các tài nguyên cần thiết
+    response.headers['Content-Security-Policy'] = """
+        default-src * 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:;
+        media-src * 'self' blob: mediastream: data:;
+        img-src * 'self' data: blob:;
+        connect-src * 'self' blob: mediastream:;
+        worker-src * 'self' blob:;
+        script-src * 'self' 'unsafe-inline' 'unsafe-eval';
+        style-src * 'self' 'unsafe-inline';
+        font-src * 'self' data:;
+    """.replace('\n', ' ').strip()
     return response
 
 
@@ -721,8 +818,12 @@ def scan_page():
     if 'username' not in session:
         session['username'] = 'test_user_email@example.com'
     response = make_response(render_template("mobile_scan_screen.html"))
+    # Cấu hình quyền camera và microphone cho trang quét
     response.headers['Permissions-Policy'] = 'camera=*, microphone=*'
     response.headers['Feature-Policy'] = 'camera *; microphone *'
+    # Loại bỏ CSP để test camera
+    if 'Content-Security-Policy' in response.headers:
+        del response.headers['Content-Security-Policy']
     return response
 
 @app.route("/inventory_test")
@@ -1716,8 +1817,31 @@ if __name__ == '__main__':
     # Get port from environment variable (for Render compatibility)
     port = int(os.environ.get('PORT', 5000))
     
-    # Run in production mode if environment variable is set
-    if os.environ.get('PRODUCTION'):
-        app.run(host='0.0.0.0', port=port)
-    else:
+    # Khởi động ngrok trong thread riêng biệt
+    def start_ngrok():
+        try:
+            from pyngrok import ngrok
+            # Đặt authtoken nếu có
+            # ngrok.set_auth_token('your_auth_token')
+            
+            # Kiểm tra xem có tunnel nào đang chạy không
+            tunnels = ngrok.get_tunnels()
+            if tunnels:
+                print(f" * ngrok tunnel đã tồn tại: {tunnels[0].public_url}")
+                return
+            
+            # Tạo tunnel HTTPS
+            public_url = ngrok.connect(port, bind_tls=True)
+            print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{port}\"")
+            print(f" * Truy cập ứng dụng qua: {public_url}/scan_page_test")
+        except Exception as e:
+            print(f" * Ngrok không khởi động được (có thể đã có session khác đang chạy): {e}")
+            print(f" * Ứng dụng vẫn chạy tại: http://127.0.0.1:{port}")
+    
+    # Chạy ngrok nếu không phải môi trường production
+    if not os.environ.get('PRODUCTION'):
+        from threading import Thread
+        Thread(target=start_ngrok, daemon=True).start()
         app.run(debug=True, host='0.0.0.0', port=port)
+    else:
+        app.run(host='0.0.0.0', port=port)

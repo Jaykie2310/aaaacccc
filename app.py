@@ -68,6 +68,7 @@ def decode_with_multiple_methods(image):
     # Thử các phương pháp tiền xử lý ảnh khác nhau
     processed_images = [image]  # Bắt đầu với ảnh gốc
     
+    # Phương pháp 1: OpenCV QRCodeDetector (ưu tiên vì ổn định hơn trên cloud)
     try:
         import cv2
         import numpy as np
@@ -76,7 +77,28 @@ def decode_with_multiple_methods(image):
         opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         gray = cv2.cvtColor(opencv_image, cv2.COLOR_BGR2GRAY)
         
-        # Thêm các phiên bản xử lý ảnh khác nhau
+        # Thử OpenCV QRCodeDetector trước
+        detector = cv2.QRCodeDetector()
+        data, bbox, straight_qrcode = detector.detectAndDecode(opencv_image)
+        if data:
+            results.append({
+                'data': data,
+                'type': 'QRCODE',
+                'method': 'opencv'
+            })
+            return results
+        
+        # Thử với ảnh grayscale
+        data, bbox, straight_qrcode = detector.detectAndDecode(gray)
+        if data:
+            results.append({
+                'data': data,
+                'type': 'QRCODE',
+                'method': 'opencv_gray'
+            })
+            return results
+        
+        # Thêm các phiên bản xử lý ảnh khác nhau cho pyzbar
         processed_images.extend([
             Image.fromarray(gray),  # Ảnh grayscale
             Image.fromarray(cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]),  # Threshold
@@ -84,11 +106,10 @@ def decode_with_multiple_methods(image):
         ])
         
     except Exception as e:
-        app.logger.warning(f"Image preprocessing failed: {str(e)}")
+        app.logger.warning(f"OpenCV processing failed: {str(e)}")
     
-    # Thử decode với từng ảnh đã xử lý
+    # Phương pháp 2: pyzbar (fallback)
     for proc_image in processed_images:
-        # Phương pháp 1: pyzbar
         try:
             from pyzbar.pyzbar import decode as pyzbar_decode
             decoded_objects = pyzbar_decode(proc_image)
@@ -163,13 +184,6 @@ CORS(app, resources={
     }
 })
 
-# Thêm mobile-specific headers
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
 
 
 @app.route('/api/process_barcode_image', methods=['POST'])
@@ -670,29 +684,6 @@ def scan_product_openfoodfacts():
         })
 
 
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    # Cải thiện header cho camera và microphone
-    response.headers['Permissions-Policy'] = 'camera=*, microphone=*, geolocation=()'
-    response.headers['Feature-Policy'] = 'camera *; microphone *'
-    # Thêm header HTTPS cho camera trên mobile
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; media-src 'self' blob: data:;"
-    return response
-
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    # Cải thiện header cho camera và microphone
-    response.headers['Permissions-Policy'] = 'camera=*, microphone=*, geolocation=()'
-    response.headers['Feature-Policy'] = 'camera *; microphone *'
-    # Thêm header HTTPS cho camera trên mobile
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; media-src 'self' blob: data:;"
-    return response
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -1699,10 +1690,15 @@ def generate_qr():
 
 
 if __name__ == '__main__':
-    qr_folder = os.path.join(os.path.dirname(__file__), 'static', 'product_qrcodes')
-    if not os.path.exists(qr_folder):
-        os.makedirs(qr_folder)
-    legacy_qr_folder = os.path.join(os.path.dirname(__file__), 'static', 'qrcodes')
-    if not os.path.exists(legacy_qr_folder):
-        os.makedirs(legacy_qr_folder)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Ensure required directories exist
+    for folder in ['static/product_qrcodes', 'static/qrcodes']:
+        os.makedirs(folder, exist_ok=True)
+    
+    # Get port from environment variable (for Render compatibility)
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Run in production mode if environment variable is set
+    if os.environ.get('PRODUCTION'):
+        app.run(host='0.0.0.0', port=port)
+    else:
+        app.run(debug=True, host='0.0.0.0', port=port)

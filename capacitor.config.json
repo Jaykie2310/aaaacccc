@@ -1,7 +1,7 @@
 {
   "appId": "com.jaykiee.quanlyqr",
   "appName": "Quan Ly QR",
-  "webDir": "www",
+  "webDir": "static",
   "server": {
     "url": "https://appqrcodemanage.onrender.com",
     "cleartext": true,
@@ -13,7 +13,9 @@
   },
   "plugins": {
     "Camera": {
-      "permissions": ["camera"]
+      "permissions": [
+        "camera"
+      ]
     },
     "CapacitorHttp": {
       "enabled": true

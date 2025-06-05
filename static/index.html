@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý QR</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            color: #2196F3;
+            margin: 0;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #1976D2;
+        }
+        .btn-secondary {
+            background: #4CAF50;
+        }
+        .btn-secondary:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>📱 Quản Lý QR</h1>
+            <p>Ứng dụng quản lý sản phẩm bằng mã QR</p>
+        </div>
+        
+        <a href="https://appqrcodemanage.onrender.com/login" class="btn">
+            🔐 Đăng Nhập
+        </a>
+        
+        <a href="https://appqrcodemanage.onrender.com/register" class="btn btn-secondary">
+            📝 Đăng Ký
+        </a>
+        
+        <a href="https://appqrcodemanage.onrender.com/quan-ly-san-pham/tong-quan" class="btn">
+            📊 Dashboard
+        </a>
+        
+        <a href="https://appqrcodemanage.onrender.com/mobile-scan-product" class="btn">
+            📷 Quét Mã QR
+        </a>
+    </div>
+
+    <script type="module">
+        // Kiểm tra nếu đang chạy trong Capacitor
+        if (window.Capacitor) {
+            console.log('Running in Capacitor');
+            
+            // Import Capacitor plugins
+            const { Camera } = await import('@capacitor/camera');
+            
+            // Cấu hình camera permissions
+            window.requestCameraPermission = async function() {
+                try {
+                    const permissions = await Camera.requestPermissions();
+                    console.log('Camera permissions:', permissions);
+                } catch (error) {
+                    console.error('Error requesting camera permissions:', error);
+                }
+            };
+            
+            // Tự động request permissions khi app khởi động
+            document.addEventListener('DOMContentLoaded', function() {
+                if (window.requestCameraPermission) {
+                    window.requestCameraPermission();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
